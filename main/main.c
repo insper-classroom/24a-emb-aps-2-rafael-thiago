@@ -44,11 +44,19 @@ void laser_task(void *p) {
         }
 
         if(listV[0] != listV[1]){
-            printf("result: %f \n", listV[1]);
+            printf("result: %d \n", listV[1]);
             data = listV[1];
             xQueueSend(xQueueA, &data, 0);
         }
-        vTaskDelay(pdMS_TO_TICKS(100));
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+}
+
+void uart_task(void *p) {
+    int data;
+    while (1) {
+        xQueueReceive(xQueueA, &data, portMAX_DELAY);
+        uart_write_blocking(uart0, &data, sizeof(int));
     }
 }
 
@@ -62,6 +70,7 @@ int main() {
     printf("Start bluetooth task\n");
 
     xTaskCreate(laser_task, "LASER_Task 1", 4096, NULL, 1, NULL);
+    xTaskCreate(uart_task, "Uart_Task 1", 4096, NULL, 1, NULL);
     //xTaskCreate(hc06_task, "UART_Task 1", 4096, NULL, 1, NULL);
 
     vTaskStartScheduler();
