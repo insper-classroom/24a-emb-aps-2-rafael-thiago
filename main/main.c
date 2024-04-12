@@ -16,6 +16,20 @@
 
 QueueHandle_t xQueueA;
 
+typedef struct {
+    int queue_number;
+    int is_pressed;
+} laser_t;
+
+void write_package(laser_t data) {
+    int queue_number = queue_number;
+    int is_pressed = data.is_pressed;
+
+    uart_putc_raw(uart0, queue_number);
+    uart_putc_raw(uart0, is_pressed);
+    uart_putc_raw(uart0, -1);
+}
+
 void hc06_task(void *p) {
     uart_init(HC06_UART_ID, HC06_BAUD_RATE);
     gpio_set_function(HC06_TX_PIN, GPIO_FUNC_UART);
