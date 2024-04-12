@@ -5,24 +5,27 @@ ser = serial.Serial('/dev/ttyACM0', 115200)
 
 # Create new mouse device
 device = uinput.Device([
-    uinput.BTN_A
+    uinput.KEY_A,
+    uinput.KEY_S,
+    uinput.KEY_J,
+    uinput.KEY_K,
+    uinput.KEY_L
 ])
 
 
 def parse_data(data):
-    btn_number = data[0]  # 0 for X, 1 for Y
-    # value = int.from_bytes(data[1:3], byteorder='little', signed=True)
+    key = data[0]
     value = data[1]
     print(f"Received data: {data}")
-    print(f"btn_number: {btn_number}, value: {value}")
-    return btn_number, value
+    print(f"btn_number: {key}, value: {value}")
+    return key, value
 
 
-def move_mouse(btn_number, value):
-    if btn_number == 0:    #
-        device.emit(uinput.REL_X, value)
-    elif btn_number == 1:  # 
-        device.emit(uinput.REL_Y, value)
+def press_key(key, value):
+    if key == 0:
+        device.emit(uinput.KEY_A, value)
+    elif key == 1:
+        device.emit(uinput.KEY_J, value)
 
 
 try:
@@ -34,10 +37,9 @@ try:
             if data == b'\xff':
                 break
 
-        # Read 4 bytes from UART
         data = ser.read(2)
-        btn_number, value = parse_data(data)
-        move_mouse(btn_number, value)
+        key, value = parse_data(data)
+        press_key(key, value)
 
 except KeyboardInterrupt:
     print("Program terminated by user")
