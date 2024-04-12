@@ -67,10 +67,16 @@ void laser_task(void *p) {
 }
 
 void uart_task(void *p) {
+    laser_t data_to_send;
     int data;
     while (1) {
-        xQueueReceive(xQueueA, &data, portMAX_DELAY);
-        uart_write_blocking(uart0, &data, sizeof(int));
+        // xQueueReceive(xQueueA, &data, portMAX_DELAY);
+        // uart_write_blocking(uart0, &data, sizeof(int));
+        if (xQueueReceive(xQueueA, &data, pdMS_TO_TICKS(10))) {
+            data_to_send.queue_number = 0;
+            data_to_send.is_pressed = data;
+            write_package(data_to_send);
+        }
     }
 }
 
