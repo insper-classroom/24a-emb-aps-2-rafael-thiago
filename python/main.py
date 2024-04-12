@@ -16,7 +16,7 @@ device = uinput.Device([
 def parse_data(data):
     key = data[0]
     value = data[1]
-    print(f"Received data: {data}")
+    print(f"Received data (hex): {data.hex()}")
     print(f"btn_number: {key}, value: {value}")
     return key, value
 

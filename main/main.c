@@ -17,13 +17,13 @@
 QueueHandle_t xQueueA;
 
 typedef struct {
-    int queue_number;
-    int is_pressed;
+    char queue_number;
+    char is_pressed;
 } laser_t;
 
 void write_package(laser_t data) {
-    int queue_number = queue_number;
-    int is_pressed = data.is_pressed;
+    char queue_number = data.queue_number;
+    char is_pressed = data.is_pressed;
 
     uart_putc_raw(uart0, queue_number);
     uart_putc_raw(uart0, is_pressed);
@@ -44,8 +44,8 @@ void hc06_task(void *p) {
 
 void laser_task(void *p) {
     adc_gpio_init(27);
-    int listV[2] = {0 ,0};
-    int data;
+    char listV[2];
+    char data;
     while(1){
         adc_select_input(1);
         int result = adc_read();
@@ -58,7 +58,6 @@ void laser_task(void *p) {
         }
 
         if(listV[0] != listV[1]){
-            printf("result: %d \n", listV[1]);
             data = listV[1];
             xQueueSend(xQueueA, &data, 0);
         }
@@ -68,7 +67,7 @@ void laser_task(void *p) {
 
 void uart_task(void *p) {
     laser_t data_to_send;
-    int data;
+    char data;
     while (1) {
         // xQueueReceive(xQueueA, &data, portMAX_DELAY);
         // uart_write_blocking(uart0, &data, sizeof(int));
