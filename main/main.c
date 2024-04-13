@@ -17,17 +17,26 @@
 QueueHandle_t xQueueA;
 
 typedef struct {
-    char queue_number;
-    char is_pressed;
+    char ID;
+    char value;
 } laser_t;
 
 void write_package(laser_t data) {
-    char queue_number = data.queue_number;
-    char is_pressed = data.is_pressed;
-
-    uart_putc_raw(uart0, queue_number);
-    uart_putc_raw(uart0, is_pressed);
+    uart_putc_raw(uart0, data.ID);
+    uart_putc_raw(uart0, data.value);
     uart_putc_raw(uart0, -1);
+}
+
+int read_n_detect (char port) { //lê a entrada adc recebida e devolve 1 se o sensor detecta proximidade
+    adc_select_input(port);
+    int result = adc_read();
+    float voltage = result * 3.3 / 4096;
+
+    if (voltage <= 0.9)
+        return 0;
+
+    return 1;
+
 }
 
 void hc06_task(void *p) {
@@ -42,23 +51,51 @@ void hc06_task(void *p) {
     }
 }
 
-void laser_task(void *p) {
-    adc_gpio_init(27);
+void laserG_task(void *p) {
+    adc_gpio_init(28);
     char listV[2];
-    char data;
+    laser_t data;
+    data.ID = 0;
     while(1){
-        adc_select_input(1);
-        int result = adc_read();
-        float voltage = result * 3.3 / 4096;
         listV[0] = listV[1];
-        if (voltage <= 0.9){
-            listV[1] = 0;
-        } else {
-            listV[1] = 1;
-        }
+        listV[1] = read_n_detect(2);
 
         if(listV[0] != listV[1]){
-            data = listV[1];
+            data.value = listV[1];
+            xQueueSend(xQueueA, &data, 0);
+        }
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+}
+
+void laserR_task(void *p) {
+    adc_gpio_init(27);
+    char listV[2];
+    laser_t data;
+    data.ID = 1;
+    while(1){
+        listV[0] = listV[1];
+        listV[1] = read_n_detect(1);
+
+        if(listV[0] != listV[1]){
+            data.value = listV[1];
+            xQueueSend(xQueueA, &data, 0);
+        }
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+}
+
+void laserY_task(void *p) {
+    adc_gpio_init(26);
+    char listV[2];
+    laser_t data;
+    data.ID = 2;
+    while(1){
+        listV[0] = listV[1];
+        listV[1] = read_n_detect(0);
+
+        if(listV[0] != listV[1]){
+            data.value = listV[1];
             xQueueSend(xQueueA, &data, 0);
         }
         vTaskDelay(pdMS_TO_TICKS(10));
@@ -67,13 +104,10 @@ void laser_task(void *p) {
 
 void uart_task(void *p) {
     laser_t data_to_send;
-    char data;
     while (1) {
         // xQueueReceive(xQueueA, &data, portMAX_DELAY);
         // uart_write_blocking(uart0, &data, sizeof(int));
-        if (xQueueReceive(xQueueA, &data, pdMS_TO_TICKS(10))) {
-            data_to_send.queue_number = 0;
-            data_to_send.is_pressed = data;
+        if (xQueueReceive(xQueueA, &data_to_send, pdMS_TO_TICKS(10))) {
             write_package(data_to_send);
         }
     }
@@ -84,11 +118,13 @@ int main() {
 
     adc_init();
 
-    xQueueA = xQueueCreate(32, sizeof(int));
+    xQueueA = xQueueCreate(32, sizeof(laser_t));
 
     printf("Start bluetooth task\n");
 
-    xTaskCreate(laser_task, "LASER_Task 1", 4096, NULL, 1, NULL);
+    xTaskCreate(laserG_task, "LASER_Task G", 4096, NULL, 1, NULL);
+    xTaskCreate(laserR_task, "LASER_Task R", 4096, NULL, 1, NULL);
+    xTaskCreate(laserY_task, "LASER_Task Y", 4096, NULL, 1, NULL);
     xTaskCreate(uart_task, "Uart_Task 1", 4096, NULL, 1, NULL);
     //xTaskCreate(hc06_task, "UART_Task 1", 4096, NULL, 1, NULL);
 
