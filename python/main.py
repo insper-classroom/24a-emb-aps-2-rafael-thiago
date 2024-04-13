@@ -25,6 +25,8 @@ def press_key(key, value):
     if key == 0:
         device.emit(uinput.KEY_A, value)
     elif key == 1:
+        device.emit(uinput.KEY_S, value)
+    elif key == 2:
         device.emit(uinput.KEY_J, value)
 
 
