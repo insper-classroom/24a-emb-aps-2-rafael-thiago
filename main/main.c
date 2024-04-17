@@ -43,6 +43,16 @@ int read_n_detect (char port) { //lê a entrada adc recebida e devolve 1 se o se
 
 }
 
+int test (char port, char teste1) {
+    char teste2;
+    vTaskDelay(pdMS_TO_TICKS(5));
+    teste2 = read_n_detect(port);
+    if (teste1 == teste2){
+        return 1;
+    }
+    return 0;     
+}
+
 void btn_callback(uint gpio, uint32_t events) {
     if (events == 0x4) {  // borda de queda (falling edge)
         xSemaphoreGiveFromISR(xSemaphore, NULL);
@@ -84,15 +94,14 @@ void laserG_task(void *p) {
     char listV[2];
     laser_t data;
     data.ID = 0;
-    char teste1;
-    char teste2;
+    char value;
+
     while(1){
-        listV[0] = listV[1];
-        teste1 = read_n_detect(2);
-        vTaskDelay(pdMS_TO_TICKS(1));
-        teste2 = read_n_detect(2);        
-        if (teste1 == teste2){
-            listV[1] = teste2;
+        listV[0] = listV[1]; 
+        value = read_n_detect(2);
+
+        if (test(2, value)){
+            listV[1] = value;
 
             if(listV[0] != listV[1]){
                 data.value = listV[1];
@@ -100,7 +109,7 @@ void laserG_task(void *p) {
             }
         }
         
-        vTaskDelay(pdMS_TO_TICKS(100));
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 
@@ -109,22 +118,21 @@ void laserR_task(void *p) {
     char listV[2];
     laser_t data;
     data.ID = 1;
-    char teste1;
-    char teste2;
+    char value;
+
     while(1){
-        listV[0] = listV[1];
-        teste1 = read_n_detect(1);
-        vTaskDelay(pdMS_TO_TICKS(1));
-        teste2 = read_n_detect(1);        
-        if (teste1 == teste2){
-            listV[1] = teste2;
+        listV[0] = listV[1]; 
+        value = read_n_detect(1);
+
+        if (test(1,value)){
+            listV[1] = value;
             
             if(listV[0] != listV[1]){
                 data.value = listV[1];
                 xQueueSend(xQueueA, &data, 0);
             }
         }
-        vTaskDelay(pdMS_TO_TICKS(100));
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 
@@ -133,23 +141,20 @@ void laserY_task(void *p) {
     char listV[2];
     laser_t data;
     data.ID = 2;
-    char teste1;
-    char teste2;
+    char value;
     while(1){
-        listV[0] = listV[1];
-        teste1 = read_n_detect(0);
-        vTaskDelay(pdMS_TO_TICKS(1));
-        teste2 = read_n_detect(0);    
+        listV[0] = listV[1]; 
+        value = read_n_detect(0);
 
-        if (teste1 == teste2){
-            listV[1] = teste2;
+        if (test(0, value)){
+            listV[1] = value;
             
             if(listV[0] != listV[1]){
                 data.value = listV[1];
                 xQueueSend(xQueueA, &data, 0);
             }
         }
-        vTaskDelay(pdMS_TO_TICKS(100));
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 
