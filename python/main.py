@@ -1,15 +1,17 @@
 import serial
 import uinput
+import time
 
 ser = serial.Serial('/dev/ttyACM0', 115200)
 
-# Create new mouse device
+# Create new keyboard device
 device = uinput.Device([
     uinput.KEY_A,
     uinput.KEY_S,
     uinput.KEY_J,
     uinput.KEY_K,
-    uinput.KEY_L
+    uinput.KEY_L,
+    uinput.KEY_SPACE  # Adicionando a tecla de espaço ao dispositivo
 ])
 
 
@@ -28,7 +30,10 @@ def press_key(key, value):
         device.emit(uinput.KEY_S, value)
     elif key == 2:
         device.emit(uinput.KEY_J, value)
-
+    elif key == 5:
+        device.emit(uinput.KEY_SPACE, value)
+        time.sleep(0.1)
+        device.emit(uinput.KEY_SPACE, 0)
 
 try:
     # sync package

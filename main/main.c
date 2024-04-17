@@ -11,10 +11,14 @@
 #include "pico/stdlib.h"
 #include <stdio.h>
 #include "hardware/adc.h"
+#include "hardware/gpio.h"
 
 #include "hc06.h"
 
 QueueHandle_t xQueueA;
+SemaphoreHandle_t xSemaphore;
+
+#define BTN_PIN 17  // Defina o pino do botão conforme necessário
 
 typedef struct {
     char ID;
@@ -32,12 +36,18 @@ int read_n_detect (char port) { //lê a entrada adc recebida e devolve 1 se o se
     int result = adc_read();
     float voltage = result * 3.3 / 4096;
 
-    if (voltage <= 0.9)
+    if (voltage <= 0.95)
         return 0;
 
     return 1;
 
 }
+
+void btn_callback(uint gpio, uint32_t events) {
+    if (events == 0x4) {  // borda de queda (falling edge)
+        xSemaphoreGiveFromISR(xSemaphore, NULL);
+    }
+} 
 
 void hc06_task(void *p) {
     uart_init(HC06_UART_ID, HC06_BAUD_RATE);
@@ -51,20 +61,46 @@ void hc06_task(void *p) {
     }
 }
 
+void btn_task(void *p){
+    gpio_init(BTN_PIN);
+    gpio_set_dir(BTN_PIN, GPIO_IN);
+    gpio_pull_up(BTN_PIN);
+    gpio_set_irq_enabled(BTN_PIN, GPIO_IRQ_EDGE_FALL, true);
+    gpio_set_irq_enabled_with_callback(BTN_PIN, GPIO_IRQ_EDGE_FALL, true, &btn_callback);
+    laser_t data;
+    data.ID = 5;
+
+    while(1){
+        if( xSemaphoreTake(xSemaphore, 100) == pdTRUE ){
+            data.value = 1;
+            xQueueSend(xQueueA, &data, 0);
+        }
+        vTaskDelay(pdMS_TO_TICKS(10));  // Tarefa ociosa
+    }
+}
+
 void laserG_task(void *p) {
     adc_gpio_init(28);
     char listV[2];
     laser_t data;
     data.ID = 0;
+    char teste1;
+    char teste2;
     while(1){
         listV[0] = listV[1];
-        listV[1] = read_n_detect(2);
+        teste1 = read_n_detect(2);
+        vTaskDelay(pdMS_TO_TICKS(1));
+        teste2 = read_n_detect(2);        
+        if (teste1 == teste2){
+            listV[1] = teste2;
 
-        if(listV[0] != listV[1]){
-            data.value = listV[1];
-            xQueueSend(xQueueA, &data, 0);
+            if(listV[0] != listV[1]){
+                data.value = listV[1];
+                xQueueSend(xQueueA, &data, 0);
+            }
         }
-        vTaskDelay(pdMS_TO_TICKS(10));
+        
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
 
@@ -73,15 +109,22 @@ void laserR_task(void *p) {
     char listV[2];
     laser_t data;
     data.ID = 1;
+    char teste1;
+    char teste2;
     while(1){
         listV[0] = listV[1];
-        listV[1] = read_n_detect(1);
-
-        if(listV[0] != listV[1]){
-            data.value = listV[1];
-            xQueueSend(xQueueA, &data, 0);
+        teste1 = read_n_detect(1);
+        vTaskDelay(pdMS_TO_TICKS(1));
+        teste2 = read_n_detect(1);        
+        if (teste1 == teste2){
+            listV[1] = teste2;
+            
+            if(listV[0] != listV[1]){
+                data.value = listV[1];
+                xQueueSend(xQueueA, &data, 0);
+            }
         }
-        vTaskDelay(pdMS_TO_TICKS(10));
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
 
@@ -90,35 +133,41 @@ void laserY_task(void *p) {
     char listV[2];
     laser_t data;
     data.ID = 2;
+    char teste1;
+    char teste2;
     while(1){
         listV[0] = listV[1];
-        listV[1] = read_n_detect(0);
+        teste1 = read_n_detect(0);
+        vTaskDelay(pdMS_TO_TICKS(1));
+        teste2 = read_n_detect(0);    
 
-        if(listV[0] != listV[1]){
-            data.value = listV[1];
-            xQueueSend(xQueueA, &data, 0);
+        if (teste1 == teste2){
+            listV[1] = teste2;
+            
+            if(listV[0] != listV[1]){
+                data.value = listV[1];
+                xQueueSend(xQueueA, &data, 0);
+            }
         }
-        vTaskDelay(pdMS_TO_TICKS(10));
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
 
 void uart_task(void *p) {
     laser_t data_to_send;
     while (1) {
-        // xQueueReceive(xQueueA, &data, portMAX_DELAY);
-        // uart_write_blocking(uart0, &data, sizeof(int));
         if (xQueueReceive(xQueueA, &data_to_send, pdMS_TO_TICKS(10))) {
             write_package(data_to_send);
         }
     }
 }
 
-int main() {
+void main() {
     stdio_init_all();
 
     adc_init();
-
     xQueueA = xQueueCreate(32, sizeof(laser_t));
+    xSemaphore = xSemaphoreCreateBinary();
 
     printf("Start bluetooth task\n");
 
@@ -126,7 +175,7 @@ int main() {
     xTaskCreate(laserR_task, "LASER_Task R", 4096, NULL, 1, NULL);
     xTaskCreate(laserY_task, "LASER_Task Y", 4096, NULL, 1, NULL);
     xTaskCreate(uart_task, "Uart_Task 1", 4096, NULL, 1, NULL);
-    //xTaskCreate(hc06_task, "UART_Task 1", 4096, NULL, 1, NULL);
+    xTaskCreate(btn_task, "BTN_Task", 4096, NULL, 1, NULL);
 
     vTaskStartScheduler();
 
