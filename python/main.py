@@ -41,7 +41,9 @@ try:
         print('Waiting for sync package...')
         while True:
             data = ser.read(1)
-            if data == b'\xff':
+            print(data)
+            # if data == b'\xff':
+            if data == "-1":
                 break
 
         data = ser.read(2)

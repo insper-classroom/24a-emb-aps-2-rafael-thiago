@@ -38,6 +38,7 @@ bool hc06_set_pin(char pin[]) {
 
     sprintf(str, "AT+PIN%s", pin);
     uart_puts(HC06_UART_ID, str);
+
     while (uart_is_readable_within_us(HC06_UART_ID, 1000)) {
         str[i++] = uart_getc(HC06_UART_ID);
     }
@@ -76,6 +77,7 @@ bool hc06_init(char name[], char pin[]) {
         printf("set pin failed\n");
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
+    vTaskDelay(pdMS_TO_TICKS(1000));
     printf("pin ok\n");
     hc06_set_at_mode(0);
 }

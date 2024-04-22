@@ -26,9 +26,17 @@ typedef struct {
 } laser_t;
 
 void write_package(laser_t data) {
-    uart_putc_raw(uart0, data.ID);
-    uart_putc_raw(uart0, data.value);
-    uart_putc_raw(uart0, -1);
+    char id[1];
+    sprintf(id, "%d", data.ID);
+    uart_puts(HC06_UART_ID, id);
+    char val[1];
+    sprintf(val, "%d", data.value);
+    uart_puts(HC06_UART_ID, val);
+    uart_puts(HC06_UART_ID, "-1");
+    // uart_putc_raw(uart0, data.ID);
+    // uart_putc_raw(uart0, data.value);
+    // uart_putc_raw(uart0, -1);
+
 }
 
 int read_n_detect (char port) { //lê a entrada adc recebida e devolve 1 se o sensor detecta proximidade
@@ -36,19 +44,24 @@ int read_n_detect (char port) { //lê a entrada adc recebida e devolve 1 se o se
     int result = adc_read();
     float voltage = result * 3.3 / 4096;
 
-    if (voltage <= 0.95)
-        return 0;
+    //printf("Voltage%d: %f\n" , port, voltage);
 
-    return 1;
+    if (voltage > 1.3)
+    {
+        //printf("Voltage%d: %f\n" , port, voltage);
+        return 1;
+    }
+
+    return 0;
 
 }
 
 int test (char port, char teste1) {
     char teste2;
-    vTaskDelay(pdMS_TO_TICKS(5));
+    vTaskDelay(pdMS_TO_TICKS(10));
     teste2 = read_n_detect(port);
     if (teste1 == teste2){
-        return 1;
+        return 1;            
     }
     return 0;     
 }
@@ -65,7 +78,11 @@ void hc06_task(void *p) {
     gpio_set_function(HC06_RX_PIN, GPIO_FUNC_UART);
     hc06_init("Bateria_Laser", "1234");
 
+    laser_t data_to_send;
     while (true) {
+        if (xQueueReceive(xQueueA, &data_to_send, pdMS_TO_TICKS(10))) {
+            write_package(data_to_send);
+        }
         uart_puts(HC06_UART_ID, "OLAAA ");
         vTaskDelay(pdMS_TO_TICKS(100));
     }
@@ -104,6 +121,11 @@ void laserG_task(void *p) {
             listV[1] = value;
 
             if(listV[0] != listV[1]){
+                if (listV[1] == 1){
+                    gpio_put(15, 1);
+                } else {
+                    gpio_put(15, 0);
+                }
                 data.value = listV[1];
                 xQueueSend(xQueueA, &data, 0);
             }
@@ -126,8 +148,13 @@ void laserR_task(void *p) {
 
         if (test(1,value)){
             listV[1] = value;
-            
+
             if(listV[0] != listV[1]){
+                if (value == 1){
+                    gpio_put(14, 1);
+                } else {
+                    gpio_put(14, 0);
+                }
                 data.value = listV[1];
                 xQueueSend(xQueueA, &data, 0);
             }
@@ -148,8 +175,13 @@ void laserY_task(void *p) {
 
         if (test(0, value)){
             listV[1] = value;
-            
+
             if(listV[0] != listV[1]){
+                if (value == 1){
+                    gpio_put(13, 1);
+                } else {
+                    gpio_put(13, 0);
+                }
                 data.value = listV[1];
                 xQueueSend(xQueueA, &data, 0);
             }
@@ -174,6 +206,12 @@ void main() {
     xQueueA = xQueueCreate(32, sizeof(laser_t));
     xSemaphore = xSemaphoreCreateBinary();
 
+    gpio_set_dir(13, GPIO_OUT);
+    gpio_init(14);
+    gpio_set_dir(14, GPIO_OUT);
+    gpio_init(15);
+    gpio_set_dir(15, GPIO_OUT);
+
     printf("Start bluetooth task\n");
 
     xTaskCreate(laserG_task, "LASER_Task G", 4096, NULL, 1, NULL);
@@ -181,7 +219,7 @@ void main() {
     xTaskCreate(laserY_task, "LASER_Task Y", 4096, NULL, 1, NULL);
     xTaskCreate(uart_task, "Uart_Task 1", 4096, NULL, 1, NULL);
     xTaskCreate(btn_task, "BTN_Task", 4096, NULL, 1, NULL);
-    xTaskCreate(hc06_task, "bluetooth Task", 4096, NULL, 1, NULL);
+    //xTaskCreate(hc06_task, "bluetooth Task", 4096, NULL, 1, NULL);
 
     vTaskStartScheduler();
 
