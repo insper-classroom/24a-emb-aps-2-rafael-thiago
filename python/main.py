@@ -45,16 +45,13 @@ try:
     while True:
         print('Waiting for sync package...')
         while True:
-            data = ser.read(1)
+            data = ser.read(4)
             print(data)
-            # if data == b'\xff':
-            if data == "-":
-                data = ser.read(1)
-                if data == "1":
-                    break
+            if (data[2] == "-" and data[3] == "1"):
+                break
 
-        data = ser.read(2)
-        key, value = parse_data(data)
+        # data = ser.read(2)
+        key, value = parse_data(data[0:2])
         press_key(key, value)
 
 except KeyboardInterrupt:
