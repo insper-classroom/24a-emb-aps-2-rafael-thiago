@@ -48,8 +48,10 @@ try:
             data = ser.read(1)
             print(data)
             # if data == b'\xff':
-            if data == "-1":
-                break
+            if data == "-":
+                data = ser.read(1)
+                if data == "1":
+                    break
 
         data = ser.read(2)
         key, value = parse_data(data)
