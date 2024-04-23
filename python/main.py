@@ -2,7 +2,7 @@ import serial
 import uinput
 import time
 
-ser = serial.Serial('/dev/ttyACM0', 115200)
+ser = serial.Serial('/dev/rfcomm0', 9600)
 
 # Create new keyboard device
 device = uinput.Device([
