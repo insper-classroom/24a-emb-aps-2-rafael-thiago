@@ -11,7 +11,8 @@ device = uinput.Device([
     uinput.KEY_J,
     uinput.KEY_K,
     uinput.KEY_L,
-    uinput.KEY_SPACE  # Adicionando a tecla de espaço ao dispositivo
+    uinput.KEY_SPACE , # Adicionando a tecla de espaço ao dispositivo
+    uinput.KEY_ESC,
 ])
 
 
@@ -34,6 +35,10 @@ def press_key(key, value):
         device.emit(uinput.KEY_SPACE, value)
         time.sleep(0.1)
         device.emit(uinput.KEY_SPACE, 0)
+    elif key == 6:
+        device.emit(uinput.KEY_ESC, value)
+        time.sleep(0.1)
+        device.emit(uinput.KEY_ESC, 0)
 
 try:
     # sync package
