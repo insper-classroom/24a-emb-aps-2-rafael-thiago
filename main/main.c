@@ -16,9 +16,11 @@
 #include "hc06.h"
 
 QueueHandle_t xQueueA;
-SemaphoreHandle_t xSemaphore;
+SemaphoreHandle_t xSemaphoreSpace;
+SemaphoreHandle_t xSemaphoreEsc;
 
 #define BTN_PIN 17  // Defina o pino do botão conforme necessário
+#define ESC_PIN 18
 
 typedef struct {
     char ID;
@@ -68,7 +70,11 @@ int test (char port, char teste1) {
 
 void btn_callback(uint gpio, uint32_t events) {
     if (events == 0x4) {  // borda de queda (falling edge)
-        xSemaphoreGiveFromISR(xSemaphore, NULL);
+        if (gpio == BTN_PIN) {
+            xSemaphoreGiveFromISR(xSemaphoreSpace, NULL);
+        } else if (gpio == ESC_PIN) {
+            xSemaphoreGiveFromISR(xSemaphoreEsc, NULL);
+        }
     }
 } 
 
@@ -98,7 +104,25 @@ void btn_task(void *p){
     data.ID = 5;
 
     while(1){
-        if( xSemaphoreTake(xSemaphore, 100) == pdTRUE ){
+        if( xSemaphoreTake(xSemaphoreSpace, 100) == pdTRUE ){
+            data.value = 1;
+            xQueueSend(xQueueA, &data, 0);
+        }
+        vTaskDelay(pdMS_TO_TICKS(10));  // Tarefa ociosa
+    }
+}
+
+void btn_esc_task(void *p){
+    gpio_init(ESC_PIN);
+    gpio_set_dir(ESC_PIN, GPIO_IN);
+    gpio_pull_up(ESC_PIN);
+    gpio_set_irq_enabled(ESC_PIN, GPIO_IRQ_EDGE_FALL, true);
+    gpio_set_irq_enabled_with_callback(ESC_PIN, GPIO_IRQ_EDGE_FALL, true, &btn_callback);
+
+    laser_t data;
+    data.ID = 6;
+    while(1){
+        if( xSemaphoreTake(xSemaphoreEsc, 100) == pdTRUE ){
             data.value = 1;
             xQueueSend(xQueueA, &data, 0);
         }
@@ -202,8 +226,10 @@ void main() {
 
     adc_init();
     xQueueA = xQueueCreate(32, sizeof(laser_t));
-    xSemaphore = xSemaphoreCreateBinary();
+    xSemaphoreSpace = xSemaphoreCreateBinary();
+    xSemaphoreEsc = xSemaphoreCreateBinary();
 
+    gpio_init(13);
     gpio_set_dir(13, GPIO_OUT);
     gpio_init(14);
     gpio_set_dir(14, GPIO_OUT);
@@ -217,6 +243,7 @@ void main() {
     xTaskCreate(laserY_task, "LASER_Task Y", 4096, NULL, 1, NULL);
     // xTaskCreate(uart_task, "Uart_Task 1", 4096, NULL, 1, NULL);
     xTaskCreate(btn_task, "BTN_Task", 4096, NULL, 1, NULL);
+    xTaskCreate(btn_esc_task, "BTN_ESC_Task", 4096, NULL, 1, NULL);
     xTaskCreate(hc06_task, "bluetooth Task", 4096, NULL, 1, NULL);
 
     vTaskStartScheduler();
