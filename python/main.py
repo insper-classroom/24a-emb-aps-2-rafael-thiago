@@ -17,12 +17,10 @@ device = uinput.Device([
 
 
 def parse_data(data):
-    key = data[0]
-    value = data[1]
-    print(f"Received data (hex): {data.hex()}")
+    key = int(data[0])
+    value = int(data[1])
     print(f"btn_number: {key}, value: {value}")
     return key, value
-
 
 def press_key(key, value):
     if key == 0:
@@ -46,11 +44,10 @@ try:
         print('Waiting for sync package...')
         while True:
             data = ser.read(4)
-            print(data)
-            if (data[2] == "-" and data[3] == "1"):
+            data = [chr(byte) for byte in data]
+            if (data[2] == "-" and data[3] == '1'):
                 break
 
-        # data = ser.read(2)
         key, value = parse_data(data[0:2])
         press_key(key, value)
 
