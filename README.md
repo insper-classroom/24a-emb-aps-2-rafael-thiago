@@ -1,4 +1,12 @@
-# HC06 examplo
+# Bateria Laser
+
+Controle de bateria para o jogo Guitar Flash 3
+
+## Diagrama de blocos
+
+![](diagrama_blocos.drawio.png)
+
+## HC06 examplo
 
 Conectar HC06 no 5V e gnd, pino TX no `GP5` e pino RX no `GP4`. Também é necessário conectar o pino `STATE` do bluetooth no pino `GP3`.
 
@@ -31,7 +39,7 @@ void hc06_task(void *p) {
 Extra ao que foi feito em sala de aula, eu adicionei o `hc06_set_at_mode` que força o módulo bluetooth entrar em modo `AT`, caso contrário ele fica 
 conectado no equipamento e não recebe mais comandos.
 
-## No linux
+### No linux
 
 Para conectar o bluetooth no linux usar os passos descritos no site:
 
